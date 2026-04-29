@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Dispatch System V10 - Cloud Connected</title>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #000; color: #0f0; direction: rtl; text-align: center; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+    .box { padding: 30px; width: 420px; background: #000; border: 2px solid #0f0; border-radius: 15px; box-shadow: 0 0 25px #0f0; position: relative; }
+    .bomb { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; filter: drop-shadow(0 0 5px red); }
+    input { width: 90%; margin: 12px 0; padding: 12px; border-radius: 8px; border: 1px solid #0f0; background: #050505; color: #0f0; text-align: center; outline: none; }
+    button { padding: 12px; background: #0f0; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 95%; font-size: 16px; transition: 0.3s; }
+    button:disabled { background: #222; color: #444; cursor: not-allowed; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-content { background: #0a0a0a; border: 2px solid #0f0; padding: 25px; border-radius: 15px; width: 350px; text-align: center; }
+    .admin-section { background: #111; border: 1px solid #333; margin: 10px 0; padding: 15px; border-radius: 10px; text-align: right; }
+    .list-box { background: #050505; border: 1px solid #222; padding: 8px; margin-top: 10px; font-size: 11px; max-height: 100px; overflow-y: auto; color: #888; }
+    .unblock-btn { color: red; cursor: pointer; margin-right: 8px; font-weight: bold; }
+    .status { margin-top: 15px; font-weight: bold; font-size: 14px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <div class="bomb" onclick="openAdminAuth()">💣</div>
+  <div id="auth-section">
+    <h2>🔐 Secure Access</h2>
+    <input type="password" id="code" placeholder="הכנס קוד גישה">
+    <button onclick="checkCode()">Unlock System</button>
+  </div>
+  <div id="system" class="hidden">
+    <h2>⚡ Dispatch System V10</h2>
+    <input type="text" id="phone" placeholder="מספר טלפון יעד">
+    <input type="number" id="duration" placeholder="זמן פעולה (שניות)">
+    <button id="exec-btn" onclick="startDispatch()">Execute Action 🚀</button>
+    <div class="status" id="status">מתחבר לענן...</div>
+  </div>
+</div>
+
+<div id="admin-panel-modal" class="modal"><div class="modal-content">
+    <h2 style="color: gold;">CONTROL CENTER</h2>
+    <div class="admin-section"><strong>📱 חסימת מספר</strong><input type="text" id="ban-num-input"><button onclick="addBlock('num')">חסום</button><div class="list-box" id="list-nums"></div></div>
+    <div class="admin-section"><strong>🌐 חסימת IP</strong><input type="text" id="ban-ip-input"><button onclick="addBlock('ip')">חסום</button><div class="list-box" id="list-ips"></div></div>
+    <button onclick="closeModal('admin-panel-modal')">סגור</button>
+</div></div>
+
+<script>
+// הגדרות Firebase המעודכנות שלך
+const firebaseConfig = {
+  apiKey: "AIzaSyCzwIMkDXThLhfBf2QcBqi...", 
+  authDomain: "nlspamer.firebaseapp.com",
+  databaseURL: "https://nlspamer-default-rtdb.firebaseio.com/",
+  projectId: "nlspamer",
+  storageBucket: "nlspamer.appspot.com",
+  messagingSenderId: "533175547118",
+  appId: "1:533175547118:web:3de5beda..."
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const ACCESS_CODE = "שחיף";
+const ADMIN_CODE = "Juli";
+let userIP = "";
+let blockedIPs = [];
+let blockedNums = [];
+
+// מאזין לחסימות בזמן אמת
+db.ref('blocks').on('value', (snapshot) => {
+    const data = snapshot.val() || { ips: {}, nums: {} };
+    blockedIPs = Object.values(data.ips || {});
+    blockedNums = Object.values(data.nums || {});
+    updateLists(data);
+    checkAccess();
+});
+
+fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => { userIP = d.ip; checkAccess(); });
+
+function checkCode() {
+    if (document.getElementById("code").value === ACCESS_CODE) {
+        document.getElementById("auth-section").classList.add("hidden");
+        document.getElementById("system").classList.remove("hidden");
+    }
+}
+
+function openAdminAuth() {
+    let pass = prompt("הכנס קוד מנהל:");
+    if (pass === ADMIN_CODE) document.getElementById('admin-panel-modal').style.display = 'flex';
+}
+
+function addBlock(type) {
+    const input = document.getElementById(type === 'ip' ? 'ban-ip-input' : 'ban-num-input');
+    if (!input.value) return;
+    db.ref(`blocks/${type}s`).push(input.value);
+    input.value = "";
+}
+
+function removeBlock(type, key) {
+    db.ref(`blocks/${type}s/${key}`).remove();
+}
+
+function updateLists(data) {
+    const ipList = document.getElementById('list-ips');
+    const numList = document.getElementById('list-nums');
+    ipList.innerHTML = ""; numList.innerHTML = "";
+    for (let key in data.ips) ipList.innerHTML += `<div><span class="unblock-btn" onclick="removeBlock('ip', '${key}')">[X]</span> ${data.ips[key]}</div>`;
+    for (let key in data.nums) numList.innerHTML += `<div><span class="unblock-btn" onclick="removeBlock('num', '${key}')">[X]</span> ${data.nums[key]}</div>`;
+}
+
+function checkAccess() {
+    const btn = document.getElementById('exec-btn');
+    const status = document.getElementById('status');
+    if (blockedIPs.includes(userIP)) {
+        btn.disabled = true; btn.innerText = "גישה חסומה 🚫";
+        status.innerText = "ה-IP שלך נחסם מהמערכת.";
+    } else {
+        btn.disabled = false; btn.innerText = "Execute Action 🚀";
+        status.innerText = "סטטוס: מוכן ומחובר לענן";
+    }
+}
+
+function startDispatch() {
+    const phone = document.getElementById("phone").value;
+    if (blockedNums.includes(phone)) return alert("המספר הזה חסום במערכת!");
+    alert("הפעולה נשלחה בהצלחה!");
+}
+
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+</script>
+</body>
+</html>
