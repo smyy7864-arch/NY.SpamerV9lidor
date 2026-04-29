@@ -1,134 +1,123 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>Dispatch System V10 - Cloud Connected</title>
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת אבטחה - גישה מוגבלת</title>
+    <style>
+        /* עיצוב הרקע והדף */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: #0f0; /* ירוק זרחני */
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; /* מונע גלילה כדי שהמטריקס יכסה הכל */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
 
-  <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #000; color: #0f0; direction: rtl; text-align: center; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-    .box { padding: 30px; width: 420px; background: #000; border: 2px solid #0f0; border-radius: 15px; box-shadow: 0 0 25px #0f0; position: relative; }
-    .bomb { position: absolute; top: 15px; right: 15px; font-size: 20px; cursor: pointer; filter: drop-shadow(0 0 5px red); }
-    input { width: 90%; margin: 12px 0; padding: 12px; border-radius: 8px; border: 1px solid #0f0; background: #050505; color: #0f0; text-align: center; outline: none; }
-    button { padding: 12px; background: #0f0; color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 95%; font-size: 16px; transition: 0.3s; }
-    button:disabled { background: #222; color: #444; cursor: not-allowed; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 1000; justify-content: center; align-items: center; }
-    .modal-content { background: #0a0a0a; border: 2px solid #0f0; padding: 25px; border-radius: 15px; width: 350px; text-align: center; }
-    .admin-section { background: #111; border: 1px solid #333; margin: 10px 0; padding: 15px; border-radius: 10px; text-align: right; }
-    .list-box { background: #050505; border: 1px solid #222; padding: 8px; margin-top: 10px; font-size: 11px; max-height: 100px; overflow-y: auto; color: #888; }
-    .unblock-btn { color: red; cursor: pointer; margin-right: 8px; font-weight: bold; }
-    .status { margin-top: 15px; font-weight: bold; font-size: 14px; }
-    .hidden { display: none; }
-  </style>
+        /* קנבס לרקע המטריקס */
+        #matrix {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        /* תיבת הטקסט במרכז */
+        .terminal {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border: 2px solid #0f0;
+            box-shadow: 0 0 15px #0f0;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .status-text {
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .discord-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: black;
+            background: #0f0;
+            padding: 10px 20px;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+
+        .discord-link:hover {
+            background: #008000;
+            color: white;
+        }
+    </style>
 </head>
 <body>
 
-<div class="box">
-  <div class="bomb" onclick="openAdminAuth()">💣</div>
-  <div id="auth-section">
-    <h2>🔐 Secure Access</h2>
-    <input type="password" id="code" placeholder="הכנס קוד גישה">
-    <button onclick="checkCode()">Unlock System</button>
-  </div>
-  <div id="system" class="hidden">
-    <h2>⚡ Dispatch System V10</h2>
-    <input type="text" id="phone" placeholder="מספר טלפון יעד">
-    <input type="number" id="duration" placeholder="זמן פעולה (שניות)">
-    <button id="exec-btn" onclick="startDispatch()">Execute Action 🚀</button>
-    <div class="status" id="status">מתחבר לענן...</div>
-  </div>
-</div>
+    <canvas id="matrix"></canvas>
 
-<div id="admin-panel-modal" class="modal"><div class="modal-content">
-    <h2 style="color: gold;">CONTROL CENTER</h2>
-    <div class="admin-section"><strong>📱 חסימת מספר</strong><input type="text" id="ban-num-input"><button onclick="addBlock('num')">חסום</button><div class="list-box" id="list-nums"></div></div>
-    <div class="admin-section"><strong>🌐 חסימת IP</strong><input type="text" id="ban-ip-input"><button onclick="addBlock('ip')">חסום</button><div class="list-box" id="list-ips"></div></div>
-    <button onclick="closeModal('admin-panel-modal')">סגור</button>
-</div></div>
+    <div class="terminal">
+        <h1>מערכת אבטחה פעילה</h1>
+        <p class="status-text">...סורק רשתות...</p>
+        <p>גישה למורשים בלבד</p>
+        <a href="https://discord.gg/YOUR-LINK" class="discord-link">הצטרף לדיסקורד שלנו</a>
+    </div>
 
-<script>
-// הגדרות Firebase המעודכנות שלך
-const firebaseConfig = {
-  apiKey: "AIzaSyCzwIMkDXThLhfBf2QcBqi...", 
-  authDomain: "nlspamer.firebaseapp.com",
-  databaseURL: "https://nlspamer-default-rtdb.firebaseio.com/",
-  projectId: "nlspamer",
-  storageBucket: "nlspamer.appspot.com",
-  messagingSenderId: "533175547118",
-  appId: "1:533175547118:web:3de5beda..."
-};
+    <script>
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+        // התאמת הקנבס לגודל המסך
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-const ACCESS_CODE = "שחיף";
-const ADMIN_CODE = "Juli";
-let userIP = "";
-let blockedIPs = [];
-let blockedNums = [];
+        // תווים שיופיעו ברקע (אפשר להוסיף אותיות, מספרים או תווים מוזרים)
+        const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$#@%&*^";
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
 
-// מאזין לחסימות בזמן אמת
-db.ref('blocks').on('value', (snapshot) => {
-    const data = snapshot.val() || { ips: {}, nums: {} };
-    blockedIPs = Object.values(data.ips || {});
-    blockedNums = Object.values(data.nums || {});
-    updateLists(data);
-    checkAccess();
-});
+        // מערך שיחזיק את המיקום של כל "טיפה"
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
 
-fetch('https://api.ipify.org?format=json').then(r => r.json()).then(d => { userIP = d.ip; checkAccess(); });
+        function draw() {
+            // שכבה שחורה שקופה כדי ליצור את אפקט הטשטוש (Fade)
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-function checkCode() {
-    if (document.getElementById("code").value === ACCESS_CODE) {
-        document.getElementById("auth-section").classList.add("hidden");
-        document.getElementById("system").classList.remove("hidden");
-    }
-}
+            ctx.fillStyle = "#0f0"; // צבע האותיות
+            ctx.font = fontSize + "px arial";
 
-function openAdminAuth() {
-    let pass = prompt("הכנס קוד מנהל:");
-    if (pass === ADMIN_CODE) document.getElementById('admin-panel-modal').style.display = 'flex';
-}
+            for (let i = 0; i < drops.length; i++) {
+                const text = characters.charAt(Math.floor(Math.random() * characters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
 
-function addBlock(type) {
-    const input = document.getElementById(type === 'ip' ? 'ban-ip-input' : 'ban-num-input');
-    if (!input.value) return;
-    db.ref(`blocks/${type}s`).push(input.value);
-    input.value = "";
-}
+                // החזרת הטיפה למעלה באקראי אחרי שהיא עוברת את סוף המסך
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
 
-function removeBlock(type, key) {
-    db.ref(`blocks/${type}s/${key}`).remove();
-}
-
-function updateLists(data) {
-    const ipList = document.getElementById('list-ips');
-    const numList = document.getElementById('list-nums');
-    ipList.innerHTML = ""; numList.innerHTML = "";
-    for (let key in data.ips) ipList.innerHTML += `<div><span class="unblock-btn" onclick="removeBlock('ip', '${key}')">[X]</span> ${data.ips[key]}</div>`;
-    for (let key in data.nums) numList.innerHTML += `<div><span class="unblock-btn" onclick="removeBlock('num', '${key}')">[X]</span> ${data.nums[key]}</div>`;
-}
-
-function checkAccess() {
-    const btn = document.getElementById('exec-btn');
-    const status = document.getElementById('status');
-    if (blockedIPs.includes(userIP)) {
-        btn.disabled = true; btn.innerText = "גישה חסומה 🚫";
-        status.innerText = "ה-IP שלך נחסם מהמערכת.";
-    } else {
-        btn.disabled = false; btn.innerText = "Execute Action 🚀";
-        status.innerText = "סטטוס: מוכן ומחובר לענן";
-    }
-}
-
-function startDispatch() {
-    const phone = document.getElementById("phone").value;
-    if (blockedNums.includes(phone)) return alert("המספר הזה חסום במערכת!");
-    alert("הפעולה נשלחה בהצלחה!");
-}
-
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-</script>
+        setInterval(draw, 33); // מהירות הריצה (33 מילישניות)
+    </script>
 </body>
 </html>
